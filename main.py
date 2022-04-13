@@ -43,9 +43,8 @@ def translateRange(translator, range_start, range_end, translate_data, lock):
     for i in range(range_start, range_end + 1):
         with lock:  # locked lines will only be executed by one thread at a time
             key = nth_key(translate_data, i)  # starts from 0
-            translated_text = translate_data[key]
-            print(f'Translating line {i + 1} of {len(translate_data.keys())}')
-        translate_value = translator.translate(translated_text)
+        print(f'Translating line {i + 1} of {len(translate_data.keys())}')
+        translate_value = translator.translate(translate_data[key])
         with lock:
             translate_data[key] = translate_value
     print(f'Thread ({range_start}, {range_end}) finished')
