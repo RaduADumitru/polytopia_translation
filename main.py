@@ -43,8 +43,9 @@ def translateRange(translator, range_start, range_end, translate_data, lock):
     for i in range(range_start, range_end + 1):
         with lock:  # locked lines will only be executed by one thread at a time
             key = nth_key(translate_data, i)  # starts from 0
-        print(f'Translating line {i + 1} of {len(translate_data.keys())}')
-        translate_value = translator.translate(translate_data[key])
+            translated_text = translate_data[key]
+            print(f'Translating line {i + 1} of {len(translate_data.keys())}')
+        translate_value = translator.translate(translated_text)
         with lock:
             translate_data[key] = translate_value
     print(f'Thread ({range_start}, {range_end}) finished')
@@ -53,12 +54,12 @@ def translateRange(translator, range_start, range_end, translate_data, lock):
 
 if __name__ == '__main__':
     with open('en_US.json') as json_file:
+        threads = int(input('Number of threads: '))
         start_time = perf_counter()
         data = json.load(json_file)
         keys = len(data.keys())
         print(f'Lines translating: {keys}')
-        translator = DeepL(api_key=os.environ.get('DEEPL_API_KEY'), source='en', target='ro')
-        threads = 10
+        common_translator = DeepL(api_key=os.environ.get('DEEPL_API_KEY'), source='en', target='ro')
         ranges = getRanges(keys, threads)
         print(ranges)
         thread_list = []
@@ -66,7 +67,8 @@ if __name__ == '__main__':
         # lock to avoid race conditions (multiple threads accesing same data at the same time)
         for translate_range in ranges:
             translate_thread = threading.Thread(target=translateRange,
-                                                args=(translator, translate_range[0], translate_range[1], data, thread_lock))
+                                                args=(common_translator, translate_range[0],
+                                                      translate_range[1], data, thread_lock))
             thread_list.append(translate_thread)
             translate_thread.start()
         for thread in thread_list:
