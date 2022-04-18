@@ -1,7 +1,7 @@
 import os
 import json
 import threading
-from deep_translator import DeepL
+from deep_translator import DeepL, GoogleTranslator
 from time import perf_counter
 from itertools import islice
 
@@ -44,22 +44,35 @@ def translateRange(translator, range_start, range_end, translate_data, lock):
         with lock:  # locked lines will only be executed by one thread at a time
             key = nth_key(translate_data, i)  # starts from 0
             nr_lines = len(translate_data.keys())
-        print(f'Translating line {i + 1} of {nr_lines}')
-        translate_value = translator.translate(translate_data[key])
+            print(f'Translating line {i + 1} of {nr_lines}')
+            translate_line = translate_data[key]
+        translate_value = translator.translate(translate_line)
         with lock:
             translate_data[key] = translate_value
-    print(f'Thread ({range_start}, {range_end}) finished')
+    with lock:
+        print(f'Thread ({range_start}, {range_end}) finished')
+        # prints under lock in order to avoid multiple prints at same time appearing on same line
     return
 
 
 if __name__ == '__main__':
     with open('en_US.json') as json_file:
+        common_translator = None
+        while True:
+            translator_option = input('Translator to use (0 - Google Translate, 1 - DeepL): ')
+            if translator_option == '0':
+                common_translator = GoogleTranslator(source='en', target='ro')
+                break
+            elif translator_option == '1':
+                common_translator = DeepL(api_key=os.environ.get('DEEPL_API_KEY'), source='en', target='ro')
+                break
+            else:
+                print('Option not recognized!')
         threads = int(input('Number of threads: '))
         start_time = perf_counter()
         data = json.load(json_file)
         keys = len(data.keys())
         print(f'Lines translating: {keys}')
-        common_translator = DeepL(api_key=os.environ.get('DEEPL_API_KEY'), source='en', target='ro')
         ranges = getRanges(keys, threads)
         print(ranges)
         thread_list = []
